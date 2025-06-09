@@ -11,10 +11,11 @@ import asyncio
 import aiofiles
 import uvicorn
 
-
 PATH = os.getcwd()
 
-gigaam.vad_utils._PIPELINE = Pipeline.from_pretrained(PATH + "/config/vad/config.yaml")
+if not os.environ.get("HF_TOKEN"):
+    print("run offline")
+    gigaam.vad_utils._PIPELINE = Pipeline.from_pretrained(PATH + "/config/vad/config.yaml")
 
 app = FastAPI()
 

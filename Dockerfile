@@ -21,7 +21,7 @@ RUN apt-get update \
     curl \
     ffmpeg
 # WORKDIR $POETRY_HOME
-ENV POETRY_VERSION=1.8.1
+ENV POETRY_VERSION=2.1.3
 RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python3 -
 
 WORKDIR $PYSETUP_PATH
@@ -32,6 +32,6 @@ COPY . .
 EXPOSE 8000
 
 # RUN poetry build
-RUN poetry install --only main
+RUN poetry install
 
 CMD poetry run python src/main.py

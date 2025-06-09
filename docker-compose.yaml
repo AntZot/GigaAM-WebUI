@@ -13,6 +13,9 @@ services:
     ports:
       - "8000:8000"
 
+    environment:
+      - HF_TOKEN="<TOKEN_HERE>"
+      - PYANNOTE_CACHE=/opt/pysetup/models
     stdin_open: true
     tty: true
 
