@@ -30,10 +30,8 @@ packages = [
 # priority = "explicit"
 
 
-[tool.poetry.extras]
-torch-cpu = ["torch", "torchaudio"]
-torch-cuda = ["torch", "torchaudio"]
-
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

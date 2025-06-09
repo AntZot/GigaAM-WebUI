@@ -21,17 +21,18 @@ RUN apt-get update \
     curl \
     ffmpeg
 # WORKDIR $POETRY_HOME
-ENV POETRY_VERSION=2.1.3
-RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python3 -
+# ENV POETRY_VERSION=2.1.3
+# RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python3 -
 
 WORKDIR $PYSETUP_PATH
-COPY ./pyproject.toml ./poetry.lock ./
+# COPY ./pyproject.toml ./poetry.lock ./
 
 COPY . .
 
 EXPOSE 8000
 
 # RUN poetry build
-RUN poetry install
+# RUN poetry install
+RUN pip install --no-cache-dir -r requirements.txt
 
-CMD poetry run python src/main.py
+CMD python -m src.main
