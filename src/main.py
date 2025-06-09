@@ -86,7 +86,7 @@ async def process_file(session_id: str = Depends(get_session_id)):
     )
 
     wav_path = files_list[session_id]["wav"]
-    output_txt_path = f"{SESSIONS_DIR}/output/{session_id}/{files_list[session_id]['name']}.txt"
+    output_txt_path = f"{SESSIONS_DIR}/{session_id}/output/{files_list[session_id]['name']}.txt"
 
     # Распознавание — тоже блокирующая операция
     recognition_result = await asyncio.get_event_loop().run_in_executor(
