@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, Depends, Response, Request
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, FileResponse, PlainTextResponse
 import os  
 import gigaam
 import gigaam.vad_utils
@@ -136,8 +136,22 @@ def delete_file(filename: str, session_id: str = Depends(get_session_id)):
         return {"status": "ok"}
     return {"status": "not found"}, 404
 
-@app.get('/')
-async def get_students_html(request: Request, session_id: str = Depends(get_session_id)):
+@app.post("/cookie")
+def create_cookie(
+    request: Request,
+    response: Response,
+    session_id: str = Depends(get_session_id)
+):
+    global res
+    get_user_dir(session_id)
+    res[session_id] = ""
+    return {'message':'SetUp cookie'}
+
+@app.get("/")
+def main_page(
+    request: Request,
+    session_id: str = Depends(get_session_id)
+):
     global res
     get_user_dir(session_id)
     res[session_id] = ""

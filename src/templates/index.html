@@ -1,6 +1,166 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+
+        const response = await fetch('/cookie', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        console.log(response)
+        if (!response.ok){
+          console.log("тута")
+          throw new Error(`Бек не отдал сессию ${response.status}`)
+        }
+        mainScript()
+      } catch (error) {
+        console.error(error);
+      }
+    });
+    function mainScript(){
+      const uploadForm = document.getElementById('uploadForm');
+      const resultText = document.getElementById('resultText');
+      const fileList = document.getElementById('fileList');
+      const progressContainer = document.getElementById('progressContainer');
+      const progressBar = document.getElementById('progressBar');
+      const uploadStatus = document.getElementById('uploadStatus');
+      const processButton = document.getElementById('processButton');
+      const spinner = document.getElementById('spinner');
+
+      uploadForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const formData = new FormData(uploadForm);
+          const xhr = new XMLHttpRequest();
+
+          xhr.open('POST', '/uploadfile');
+
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const percent = Math.round((e.loaded / e.total) * 100);
+              progressContainer.style.display = 'block';
+              progressBar.style.width = percent + '%';
+              progressBar.textContent = percent + '%';
+            }
+          });
+
+          xhr.onload = () => {
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+            progressContainer.style.display = 'none';
+
+            if (xhr.status === 200) {
+              uploadStatus.textContent = 'Файл успешно загружен.';
+              resultText.textContent = xhr.responseText;
+              processButton.style.display = 'inline-block';
+              fetchFiles();
+            } else {
+              resultText.textContent = 'Ошибка загрузки: ' + xhr.status;
+              uploadStatus.textContent = '';
+            }
+          };
+
+          xhr.onerror = () => {
+            resultText.textContent = 'Произошла ошибка при загрузке.';
+            uploadStatus.textContent = '';
+            progressContainer.style.display = 'none';
+          };
+
+          xhr.send(formData);
+      });
+
+      processButton.addEventListener('click', async () => {
+        spinner.style.display = 'inline-block';
+        resultText.textContent = 'Обработка файла...';
+        try {
+          const response = await fetch('/process', { method: 'POST' });
+
+          if (response.ok) {
+            // После завершения обработки — получить результат
+            await fetchResult();
+          } else {
+            resultText.textContent = 'Ошибка: сервер вернул статус ' + response.status;
+          }
+        } catch {
+          resultText.textContent = 'Ошибка при отправке запроса на обработку.';
+        } finally {
+          spinner.style.display = 'none';
+        }
+      });
+
+      fetchFiles();
+      fetchResult();
+
+      setInterval(() => {
+          fetchFiles();
+          fetchResult();
+        }, 5000);
+    }
+
+    async function fetchFiles() {
+      try {
+        const response = await fetch('/files');
+        const files = await response.json();
+
+        fileList.innerHTML = '';
+        files.forEach(file => {
+          const li = document.createElement('li');
+          li.className = 'file-item';
+
+          const link = document.createElement('a');
+          link.href = `/files/${encodeURIComponent(file)}`;
+          link.textContent = file;
+          link.className = 'download-link';
+          link.download = file;
+
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'delete-btn';
+          deleteBtn.textContent = '🗑 Удалить';
+          deleteBtn.addEventListener('click', () => deleteFile(file));
+
+          const actions = document.createElement('div');
+          actions.className = 'file-actions';
+          actions.appendChild(link);
+          actions.appendChild(deleteBtn);
+
+          li.appendChild(actions);
+          fileList.appendChild(li);
+        });
+      } catch {
+        fileList.innerHTML = '<li>Ошибка загрузки списка файлов</li>';
+      }
+    }
+
+    async function deleteFile(fileName) {
+      const confirmDelete = confirm(`Удалить файл "${fileName}"?`);
+      if (!confirmDelete) return;
+
+      try {
+        const response = await fetch(`/files/${encodeURIComponent(fileName)}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          fetchFiles();
+          resultText.textContent = `Файл "${fileName}" удалён.`;
+        } else {
+          resultText.textContent = `Не удалось удалить файл "${fileName}".`;
+        }
+      } catch {
+        resultText.textContent = 'Ошибка при удалении файла.';
+      }
+    }
+    async function fetchResult() {
+      try {
+        const response = await fetch('/result');
+        const text = await response.text();
+        resultText.textContent = text;
+      } catch {
+        resultText.textContent = 'Ошибка получения результата.';
+      }
+    }
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Загрузка файла и обработка</title>
@@ -131,146 +291,8 @@
   </div>
 
   <script>
-    const uploadForm = document.getElementById('uploadForm');
-    const resultText = document.getElementById('resultText');
-    const fileList = document.getElementById('fileList');
-    const progressContainer = document.getElementById('progressContainer');
-    const progressBar = document.getElementById('progressBar');
-    const uploadStatus = document.getElementById('uploadStatus');
-    const processButton = document.getElementById('processButton');
-    const spinner = document.getElementById('spinner');
 
-    uploadForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const formData = new FormData(uploadForm);
-      const xhr = new XMLHttpRequest();
 
-      xhr.open('POST', '/uploadfile');
-
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const percent = Math.round((e.loaded / e.total) * 100);
-          progressContainer.style.display = 'block';
-          progressBar.style.width = percent + '%';
-          progressBar.textContent = percent + '%';
-        }
-      });
-
-      xhr.onload = () => {
-        progressBar.style.width = '0%';
-        progressBar.textContent = '0%';
-        progressContainer.style.display = 'none';
-
-        if (xhr.status === 200) {
-          uploadStatus.textContent = 'Файл успешно загружен.';
-          resultText.textContent = xhr.responseText;
-          processButton.style.display = 'inline-block';
-          fetchFiles();
-        } else {
-          resultText.textContent = 'Ошибка загрузки: ' + xhr.status;
-          uploadStatus.textContent = '';
-        }
-      };
-
-      xhr.onerror = () => {
-        resultText.textContent = 'Произошла ошибка при загрузке.';
-        uploadStatus.textContent = '';
-        progressContainer.style.display = 'none';
-      };
-
-      xhr.send(formData);
-    });
-
-    async function fetchFiles() {
-      try {
-        const response = await fetch('/files');
-        const files = await response.json();
-
-        fileList.innerHTML = '';
-        files.forEach(file => {
-          const li = document.createElement('li');
-          li.className = 'file-item';
-
-          const link = document.createElement('a');
-          link.href = `/files/${encodeURIComponent(file)}`;
-          link.textContent = file;
-          link.className = 'download-link';
-          link.download = file;
-
-          const deleteBtn = document.createElement('button');
-          deleteBtn.className = 'delete-btn';
-          deleteBtn.textContent = '🗑 Удалить';
-          deleteBtn.addEventListener('click', () => deleteFile(file));
-
-          const actions = document.createElement('div');
-          actions.className = 'file-actions';
-          actions.appendChild(link);
-          actions.appendChild(deleteBtn);
-
-          li.appendChild(actions);
-          fileList.appendChild(li);
-        });
-      } catch {
-        fileList.innerHTML = '<li>Ошибка загрузки списка файлов</li>';
-      }
-    }
-
-    async function deleteFile(fileName) {
-      const confirmDelete = confirm(`Удалить файл "${fileName}"?`);
-      if (!confirmDelete) return;
-
-      try {
-        const response = await fetch(`/files/${encodeURIComponent(fileName)}`, {
-          method: 'DELETE'
-        });
-
-        if (response.ok) {
-          fetchFiles();
-          resultText.textContent = `Файл "${fileName}" удалён.`;
-        } else {
-          resultText.textContent = `Не удалось удалить файл "${fileName}".`;
-        }
-      } catch {
-        resultText.textContent = 'Ошибка при удалении файла.';
-      }
-    }
-
-    async function fetchResult() {
-      try {
-        const response = await fetch('/result');
-        const text = await response.text();
-        resultText.textContent = text;
-      } catch {
-        resultText.textContent = 'Ошибка получения результата.';
-      }
-    }
-
-    processButton.addEventListener('click', async () => {
-      spinner.style.display = 'inline-block';
-      resultText.textContent = 'Обработка файла...';
-      try {
-        const response = await fetch('/process', { method: 'POST' });
-
-        if (response.ok) {
-          // После завершения обработки — получить результат
-          await fetchResult();
-        } else {
-          resultText.textContent = 'Ошибка: сервер вернул статус ' + response.status;
-        }
-      } catch {
-        resultText.textContent = 'Ошибка при отправке запроса на обработку.';
-      } finally {
-        spinner.style.display = 'none';
-      }
-    });
-
-    setInterval(() => {
-      fetchFiles();
-      fetchResult();
-    }, 5000);
-
-    fetchFiles();
-    fetchResult();
   </script>
 </body>
 </html>
