@@ -1,0 +1,9 @@
+# from .gitignore
+**/venv/
+**/__pycache__/
+**/tmp/
+**/models/
+
+**/.idea
+**/.git
+**/.github

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Загрузка файла и обработка</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+    .progress {
+      width: 100%;
+      background-color: #f3f3f3;
+      border: 1px solid #ccc;
+      height: 20px;
+      margin-top: 10px;
+      position: relative;
+    }
+    .progress-bar {
+      height: 100%;
+      background-color: #4caf50;
+      width: 0%;
+      text-align: center;
+      color: white;
+      line-height: 20px;
+      transition: width 0.3s;
+    }
+    .horizontal-blocks {
+      display: flex;
+      gap: 20px;
+      margin-top: 20px;
+      align-items: flex-start;
+    }
+    .files, .result {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      min-width: 0;
+    }
+    .files ul {
+      padding-left: 20px;
+      margin: 0;
+    }
+    #resultText {
+      white-space: pre-wrap;
+      font-family: monospace;
+      word-break: break-word;
+    }
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    .file-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .delete-btn {
+      background: none;
+      border: none;
+      color: red;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .delete-btn:hover {
+      text-decoration: underline;
+    }
+    #processButton {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 10px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    #uploadStatus {
+      margin-top: 10px;
+      font-style: italic;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Загрузка файла</h1>
+    <form id="uploadForm">
+      <input type="file" name="file" required />
+      <button type="submit">Отправить</button>
+    </form>
+
+    <div class="progress" id="progressContainer" style="display: none;">
+      <div class="progress-bar" id="progressBar">0%</div>
+    </div>
+
+    <div id="uploadStatus"></div>
+
+    <button id="processButton" style="display: none;">Начать обработку</button>
+    <span id="spinner" class="spinner" style="display: none;"></span>
+
+    <div class="horizontal-blocks">
+      <div class="files">
+        <strong>Доступные файлы:</strong>
+        <ul id="fileList">
+          <li>Загрузка списка...</li>
+        </ul>
+      </div>
+
+      <div class="result">
+        <strong>Результат:</strong>
+        <div id="resultText">Ожидание...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const uploadForm = document.getElementById('uploadForm');
+    const resultText = document.getElementById('resultText');
+    const fileList = document.getElementById('fileList');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const processButton = document.getElementById('processButton');
+    const spinner = document.getElementById('spinner');
+
+    uploadForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const formData = new FormData(uploadForm);
+      const xhr = new XMLHttpRequest();
+
+      xhr.open('POST', '/uploadfile');
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          progressContainer.style.display = 'block';
+          progressBar.style.width = percent + '%';
+          progressBar.textContent = percent + '%';
+        }
+      });
+
+      xhr.onload = () => {
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        progressContainer.style.display = 'none';
+
+        if (xhr.status === 200) {
+          uploadStatus.textContent = 'Файл успешно загружен.';
+          resultText.textContent = xhr.responseText;
+          processButton.style.display = 'inline-block';
+          fetchFiles();
+        } else {
+          resultText.textContent = 'Ошибка загрузки: ' + xhr.status;
+          uploadStatus.textContent = '';
+        }
+      };
+
+      xhr.onerror = () => {
+        resultText.textContent = 'Произошла ошибка при загрузке.';
+        uploadStatus.textContent = '';
+        progressContainer.style.display = 'none';
+      };
+
+      xhr.send(formData);
+    });
+
+    async function fetchFiles() {
+      try {
+        const response = await fetch('/files');
+        const files = await response.json();
+
+        fileList.innerHTML = '';
+        files.forEach(file => {
+          const li = document.createElement('li');
+          li.className = 'file-item';
+
+          const link = document.createElement('a');
+          link.href = `/files/${encodeURIComponent(file)}`;
+          link.textContent = file;
+          link.className = 'download-link';
+          link.download = file;
+
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'delete-btn';
+          deleteBtn.textContent = '🗑 Удалить';
+          deleteBtn.addEventListener('click', () => deleteFile(file));
+
+          const actions = document.createElement('div');
+          actions.className = 'file-actions';
+          actions.appendChild(link);
+          actions.appendChild(deleteBtn);
+
+          li.appendChild(actions);
+          fileList.appendChild(li);
+        });
+      } catch {
+        fileList.innerHTML = '<li>Ошибка загрузки списка файлов</li>';
+      }
+    }
+
+    async function deleteFile(fileName) {
+      const confirmDelete = confirm(`Удалить файл "${fileName}"?`);
+      if (!confirmDelete) return;
+
+      try {
+        const response = await fetch(`/files/${encodeURIComponent(fileName)}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          fetchFiles();
+          resultText.textContent = `Файл "${fileName}" удалён.`;
+        } else {
+          resultText.textContent = `Не удалось удалить файл "${fileName}".`;
+        }
+      } catch {
+        resultText.textContent = 'Ошибка при удалении файла.';
+      }
+    }
+
+    async function fetchResult() {
+      try {
+        const response = await fetch('/result');
+        const text = await response.text();
+        resultText.textContent = text;
+      } catch {
+        resultText.textContent = 'Ошибка получения результата.';
+      }
+    }
+
+    processButton.addEventListener('click', async () => {
+      spinner.style.display = 'inline-block';
+      resultText.textContent = 'Обработка файла...';
+      try {
+        const response = await fetch('/process', { method: 'POST' });
+
+        if (response.ok) {
+          // После завершения обработки — получить результат
+          await fetchResult();
+        } else {
+          resultText.textContent = 'Ошибка: сервер вернул статус ' + response.status;
+        }
+      } catch {
+        resultText.textContent = 'Ошибка при отправке запроса на обработку.';
+      } finally {
+        spinner.style.display = 'none';
+      }
+    });
+
+    setInterval(() => {
+      fetchFiles();
+      fetchResult();
+    }, 5000);
+
+    fetchFiles();
+    fetchResult();
+  </script>
+</body>
+</html>

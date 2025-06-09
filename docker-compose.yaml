@@ -1,0 +1,28 @@
+services:
+  gigaam-webui:
+    container_name: gigaam-webui
+    build: .
+    image: AntZot/gigaam-webui:latest
+
+    volumes:
+      # You can mount the container's volume paths to directory paths on your local machine.
+      # Models will be stored in the `./models' directory on your machine.
+      # Similarly, all output files will be stored in the `./outputs` directory.
+      - ./models:/GigaAM-WebUI/models
+
+    ports:
+      - "8000:8000"
+
+    stdin_open: true
+    tty: true
+
+    # If you're not using nvidia GPU, Update device to match yours.
+    # See more info at : https://docs.docker.com/compose/compose-file/deploy/#driver
+    # You can remove the entire `deploy' section if you are using CPU.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [ gpu ]
