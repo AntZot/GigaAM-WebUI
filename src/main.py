@@ -49,7 +49,7 @@ async def create_upload_file(file: UploadFile | None = None, session_id: str = D
         return PlainTextResponse("Файл не передан", status_code=400)
 
     file_location = f"{SESSIONS_DIR}/{session_id}/buffer"
-    output_name = re.sub(r'(.webm|.mp4)', '', file.filename)
+    output_name = re.sub(r'(.webm|.mp4|.m4a)', '', file.filename)
     safe_output = output_name.replace(" ", "_")
     wav_path = f"{SESSIONS_DIR}/{session_id}/{safe_output}.wav"
 
@@ -75,16 +75,20 @@ async def create_upload_file(file: UploadFile | None = None, session_id: str = D
         "name": output_name
     }
 
-    return PlainTextResponse("Файл успешно загружен.")
+    return PlainTextResponse("Файл успешно загружен.",status_code=200)
 
 @app.post("/process")
 async def process_file(session_id: str = Depends(get_session_id)):
+    from time import time
+    import datetime
     # Загрузка модели (лучше делать один раз и кэшировать!)
+    start_time = time()
+    print(f"[{datetime.datetime.now()}] Обработка началась")
+    
     model = await asyncio.get_event_loop().run_in_executor(
         None,
         lambda: gigaam.load_model("v2_ctc", device="cpu", download_root=f"{PATH}/models/")
     )
-
     wav_path = files_list[session_id]["wav"]
     output_txt_path = f"{SESSIONS_DIR}/{session_id}/output/{files_list[session_id]['name']}.txt"
 
@@ -111,6 +115,7 @@ async def process_file(session_id: str = Depends(get_session_id)):
     await remove_if_exists(f"{SESSIONS_DIR}/{session_id}/buffer")
     await remove_if_exists(files_list[session_id]["wav"])
     files_list.pop(session_id)
+    print(f"[{datetime.datetime.now()}] Обработка закончилась общее время работы ({time() - start_time})")
     return Response(status_code=200)
     
 @app.get("/result", response_class=PlainTextResponse)
@@ -147,6 +152,7 @@ def create_cookie(
     res[session_id] = ""
     return {'message':'SetUp cookie'}
 
+
 @app.get("/")
 def main_page(
     request: Request,
@@ -156,6 +162,9 @@ def main_page(
     get_user_dir(session_id)
     res[session_id] = ""
     return templates.TemplateResponse(name='index.html', context={'request': request})
+
+
+
 
 
 def start():
