@@ -2,7 +2,7 @@ services:
   gigaam-webui:
     container_name: gigaam-webui
     build: .
-    image: AntZot/gigaam-webui:latest
+    image: antzot/gigaam-webui:latest
 
     volumes:
       # You can mount the container's volume paths to directory paths on your local machine.
